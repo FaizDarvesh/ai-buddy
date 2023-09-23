@@ -107,8 +107,13 @@ export async function POST(request: Request, { params }: { params: { chatId: str
         )
 
         const cleaned = resp.replaceAll(",", ""); //Model response has a lot of commas
-        const chunks = cleaned.split("\n");
+        const chunks = cleaned.split("\n\n\n");
         const response = chunks[0];
+
+        // console.log("RESP:", resp)
+        // console.log("CLEANED:", cleaned)
+        // console.log("CHUNKS:", chunks)
+        // console.log("RESPONSE:", response)
 
         // write response to memory manager
         await memoryManager.writeToHistory("" + response.trim(), companionKey);
