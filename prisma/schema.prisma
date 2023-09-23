@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"] //preview features for prisma client enabled
+}
+
+model Category {
+  id  String @id @default(uuid())
+  name  String
+
+  companions  Companion[]
+}
+
+model Companion {
+  id            String @id @default(uuid())
+  userId        String
+  userName      String
+  src           String //source image URL
+  name          String @db.Text
+  description   String
+  instructions  String @db.Text
+  seed          String @db.Text
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category      Category @relation(fields: [categoryId], references: [id]) //map to category ID
+  categoryId    String
+
+  messages      Message[] //array with message model values
+
+  @@index([categoryId])
+  @@fulltext([name]) //enable full text search for name using preview features
+}
+
+enum Role {
+  user
+  system
+}
+
+model Message {
+  id            String @id @default(uuid())
+  role          Role
+  content       String @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  companionId   String
+  userId        String
+
+  companion     Companion @relation(fields: [companionId], references: [id], onDelete: Cascade)
+  // relationship between message and companion displayed, with deletion of messages if companion is deleted to avoid messages saved with no companion
+
+  @@index([companionId]) //removes warning about index for relationship
+}
+
+model UserSubscription {
+  id                      String @id @default(uuid())
+  userId                  String @unique
+  stripeCustomerId        String? @unique @map(name: "stripe_customer_id") //This has ? because it is optional
+  stripeSubscriptionId    String? @unique @map(name: "stripe_subscription_id")
+  stripePriceId           String? @unique @map(name: "stripe_price_id")
+  stripeCurrentPeriodEnd  DateTime? @unique @map(name: "stripe_current_period_end")
+}

@@ -1,6 +1,11 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { ClerkProvider } from '@clerk/nextjs'
+import { ThemeProvider } from '@/components/ui/theme-provider'
+import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/toaster'
+import { ProModal } from '@/components/pro-modal' //For overlaying pro subscription prompt
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -15,8 +20,19 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
-    </html>
+    <ClerkProvider>
+      {/* Clerk provider is for user authentication */}
+      <html lang="en" suppressHydrationWarning>
+        <title>AI buddy!</title>
+        <body className={cn("bg.secondary", inter.className)}>
+          {/* Theme provider is for dark / light / system theme */}
+          <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+            <ProModal />
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

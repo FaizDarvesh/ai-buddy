@@ -1,0 +1,74 @@
+import { auth, currentUser } from "@clerk/nextjs";
+import { NextResponse } from "next/server";
+
+import prismadb from "@/lib/prismadb";
+import { stripe } from "@/lib/stripe";
+import { absoluteUrl } from "@/lib/utils";
+
+// Need a util for the full absolute URL since Stripe is external
+
+const settingsUrl = absoluteUrl("/settings");
+
+export async function GET() {
+    
+    try {
+        const { userId } = auth()
+        const user = await currentUser();
+
+        if (!userId || !user) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
+
+        const userSubscription = await prismadb.userSubscription.findUnique({
+            where: {
+                userId
+            }
+        });
+
+        // If there is a user subscription record and a customer ID, then take to billing portal
+        if ( userSubscription && userSubscription.stripeCustomerId) {
+            const stripeSession = await stripe.billingPortal.sessions.create({
+                customer: userSubscription.stripeCustomerId,
+                return_url: settingsUrl
+            })
+
+            return new NextResponse(JSON.stringify({ url: stripeSession.url }));
+        }
+
+        // For a new user who has not signed up for Pro before
+        const stripeSession = await stripe.checkout.sessions.create({
+            success_url: settingsUrl,
+            cancel_url: settingsUrl,
+            payment_method_types: ["card"],
+            mode: "subscription",
+            billing_address_collection: "auto",
+            customer_email: user?.emailAddresses[0].emailAddress,
+            line_items: [
+                {
+                    price_data: {
+                        currency: "USD",
+                        product_data: {
+                            name: "Buddy Super",
+                            description: "Add unlimited custom characters as buddies!"
+                        },
+                        unit_amount: 999,
+                        recurring: {
+                            interval: "month",
+                        }
+                    },
+                    quantity: 1,
+                }
+            ],
+            metadata: {
+                userId
+            } // To read from the Stripe web hook and understand which user the Stripe response is for so a DB update can be made
+        })
+
+        return new NextResponse(JSON.stringify({ url: stripeSession.url }))
+
+    } catch (error) {
+        console.log("[STRIPE_GET]", error);
+        return new NextResponse("Internal Error", { status: 500 });    
+    }
+
+}
