@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: { chatId: str
         const { prompt } = await request.json();
         const user = await currentUser()
 
-        if(!user || !user.firstName || !user.id) {
+        if(!user || !user.id) {
             return new NextResponse("unauthorized", { status: 401 });
         }
 
